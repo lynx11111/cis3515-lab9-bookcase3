@@ -1,6 +1,10 @@
 package com.example.bookcase;
 
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
@@ -21,7 +25,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements BookListFragment.BookInterface {
+import edu.temple.audiobookplayer.AudiobookService;
+
+public class MainActivity extends AppCompatActivity implements BookListFragment.BookInterface, BookDetailsFragment.BookDetailsInterface {
 
 
 
@@ -35,12 +41,18 @@ public class MainActivity extends AppCompatActivity implements BookListFragment.
 
     String searchWord;
 
+    ArrayList<Book> bookArrayList;
+
+    boolean isConnected;
+    AudiobookService.MediaControlBinder mediaControlBinder;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         searchText = findViewById(R.id.searchText);
         btnSearch = findViewById(R.id.searchButton);
+        bookArrayList = new ArrayList<>();
 
 
         singlePane = findViewById(R.id.container_2) == null;
@@ -48,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements BookListFragment.
         listFragment = new BookListFragment();
         viewPagerFragment = new ViewPagerFragment();
 
+        bindService(new Intent(this, AudiobookService.class), serviceConnection, BIND_AUTO_CREATE);
         if(!singlePane){
             addFragment(listFragment, R.id.container_1);
             addFragment(detailsFragment, R.id.container_2);
@@ -109,10 +122,23 @@ public class MainActivity extends AppCompatActivity implements BookListFragment.
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+
+            bookArrayList.clear();
+
+            for(int i = 0; i<bookArray.length(); i++){
+                try{
+                    bookArrayList.add(new Book(bookArray.getJSONObject(i)));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+
             if(singlePane) {
-                viewPagerFragment.addPager(bookArray);
+                viewPagerFragment.addPager(bookArrayList);
             } else {
-                listFragment.getBooks(bookArray);
+                listFragment.getBooks(bookArrayList);
             }
             return false;
         }
@@ -124,6 +150,47 @@ public class MainActivity extends AppCompatActivity implements BookListFragment.
     }
 
 
+    ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mediaControlBinder = ((AudiobookService.MediaControlBinder) service);
+            isConnected = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isConnected = false;
+            mediaControlBinder = null;
+        }
+    };
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(isConnected) {
+            unbindService(serviceConnection);
+            isConnected = false;
+        }
+    }
 
 
+    @Override
+    public void playBook(int id) {
+        mediaControlBinder.play(id);
+    }
+
+    @Override
+    public void pauseBook() {
+        mediaControlBinder.pause();
+    }
+
+    @Override
+    public void stopBook() {
+        mediaControlBinder.stop();
+    }
+
+    @Override
+    public void seekBook(int position) {
+        mediaControlBinder.seekTo(position);
+    }
 }
