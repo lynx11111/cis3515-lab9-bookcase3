@@ -26,6 +26,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 
+import edu.temple.audiobookplayer.AudiobookService;
+
 
 /**
  * A simple {@link Fragment} subclass.
@@ -33,6 +35,8 @@ import java.util.ArrayList;
 public class BookListFragment extends Fragment {
 
     private BookInterface mListener;
+
+    AudiobookService.MediaControlBinder mediaControlBinder;
 
     public BookListFragment() {
         // Required empty public constructor
@@ -67,20 +71,23 @@ public class BookListFragment extends Fragment {
         return v;
     }
 
-    public void getBooks(final JSONArray bookArray){
-        bookList.clear();
-        //ArrayAdapter<String> arrayAdapter = new ArrayAdapter(c, android.R.layout.simple_list_item_1, bookList);
-        for(int i = 0; i < bookArray.length(); i++){
-            try {
-                bookList.add(new Book(bookArray.getJSONObject(i)));
-            } catch (JSONException e) {
-                e.printStackTrace();
+    public void getBooks(final ArrayList<Book> bookArr ){
+
+        adapter = new BookAdapter(c, bookArr);
+        adapter.notifyDataSetChanged();
+        listView.setAdapter(adapter);
+
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                books = bookArr.get(position);
+                ((BookInterface) c).bookSelected(books);
             }
-        }
-        Log.d("Book List", bookList.toString());
-        updateList();
+        });
     }
 
+/* Functionality of updateList added to getBooks
     private void updateList(){
         adapter = new BookAdapter(c, bookList);
         adapter.notifyDataSetChanged();
@@ -94,6 +101,7 @@ public class BookListFragment extends Fragment {
             }
         });
     }
+    */
 
     @Override
     public void onAttach(Context context) {
